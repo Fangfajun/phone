@@ -2,6 +2,7 @@ const video = document.getElementById('video');
 const captureButton = document.getElementById('capture');
 const githubToken = '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';
 
+// 初始化摄像头
 navigator.mediaDevices.getUserMedia({ video: true, audio: false })
     .then(stream => {
         video.srcObject = stream;
@@ -14,11 +15,6 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: false })
     });
 
 let counter = localStorage.getItem('counter') ? parseInt(localStorage.getItem('counter')) : 0;
-
-function updateCounter() {
-    counter++;
-    localStorage.setItem('counter', counter);
-}
 
 async function getShaOfFile(owner, repo, path) {
     try {
@@ -38,48 +34,61 @@ async function getShaOfFile(owner, repo, path) {
     }
 }
 
-captureButton.addEventListener('click', async () => {
+async function captureAndUpload() {
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob(blob => {
+    const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(resolve, 'image/jpeg');
+    });
+
+    const base64data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = async function() {
-            const base64data = reader.result;
-
-            if (typeof base64data === 'string' && base64data.startsWith('data:image/jpeg;base64,')) {
-                // 去除前缀
-                const content = base64data.split(',')[1];
-                const owner = 'Fangfajun';
-                const repo = 'test1';
-                const path = `captured-image-${counter}.jpg`; // 更新文件名
-                updateCounter();
-
-                let sha = await getShaOfFile(owner, repo, path); // 获取文件的sha值
-
-                fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${githubToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: "Upload image via web app",
-                        content: base64data.split(',')[1],
-                        sha: sha, // 只有当文件已存在时才需要这个字段
-                        branch: 'main'
-                    })
-                }).then(response => response.json())
-                    .then(data => {
-                        console.log('Image uploaded successfully:', data);
-                    })
-                    .catch(error => {
-                        console.error('Error uploading image:', error);
-                });
-            }   
-        };
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
         reader.readAsDataURL(blob);
-    }, 'image/jpeg');
-});
+    });
+
+    if (typeof base64data === 'string' && base64data.startsWith('data:image/jpeg;base64,')) {
+        const content = base64data.split(',')[1];
+        const owner = 'Fangfajun';
+        const repo = 'test1';
+        const path = `captured-image-${++counter}.jpg`; // 更新文件名并递增计数器
+        localStorage.setItem('counter', counter);
+
+        let sha = await getShaOfFile(owner, repo, path);
+
+        const uploadData = {
+            message: "Upload image via web app",
+            content,
+            branch: 'main'
+        };
+
+        if (sha) {
+            uploadData.sha = sha;
+        }
+
+        try {
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${githubToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(uploadData)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Image uploaded successfully:', data);
+            } else {
+                console.error('Error uploading image:', await response.text());
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+        }
+    }
+}
+
+captureButton.addEventListener('click', captureAndUpload);
