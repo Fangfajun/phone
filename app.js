@@ -1,6 +1,6 @@
 const video = document.getElementById('video');
 const captureButton = document.getElementById('capture');
-const githubToken = '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';
+const githubToken = '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';
 
 // 初始化摄像头
 navigator.mediaDevices.getUserMedia({ video: true, audio: false })
