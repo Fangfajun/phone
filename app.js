@@ -49,32 +49,36 @@ captureButton.addEventListener('click', async () => {
         reader.onloadend = async function() {
             const base64data = reader.result;
 
-            const owner = 'Fangfajun';
-            const repo = 'test1';
-            const path = `captured-image-${counter}.jpg`; // 更新文件名
-            updateCounter();
+            if (typeof base64data === 'string' && base64data.startsWith('data:image/jpeg;base64,')) {
+                // 去除前缀
+                const content = base64data.split(',')[1];
+                const owner = 'Fangfajun';
+                const repo = 'test1';
+                const path = `captured-image-${counter}.jpg`; // 更新文件名
+                updateCounter();
 
-            let sha = await getShaOfFile(owner, repo, path); // 获取文件的sha值
+                let sha = await getShaOfFile(owner, repo, path); // 获取文件的sha值
 
-            fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${githubToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: "Upload image via web app",
-                    content: base64data.split(',')[1],
-                    sha: sha, // 只有当文件已存在时才需要这个字段
-                    branch: 'main'
-                })
-            }).then(response => response.json())
-                .then(data => {
-                    console.log('Image uploaded successfully:', data);
-                })
-                .catch(error => {
-                    console.error('Error uploading image:', error);
+                fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${githubToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: "Upload image via web app",
+                        content: base64data.split(',')[1],
+                        sha: sha, // 只有当文件已存在时才需要这个字段
+                        branch: 'main'
+                    })
+                }).then(response => response.json())
+                    .then(data => {
+                        console.log('Image uploaded successfully:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error uploading image:', error);
                 });
+            }   
         };
         reader.readAsDataURL(blob);
     }, 'image/jpeg');
